@@ -5,6 +5,11 @@ pub enum BitmapParseError {
     IO(io::Error),
     InvalidSignature,
     UnexpectedEOF,
+    UnsupportedHeader(u32),
+    UnsupportedCompression(u32),
+    UnsupportedBitDepth(u16),
+    InvalidHeader(&'static str),
+    InvalidPixelData,
 }
 
 impl From<io::Error> for BitmapParseError {
@@ -23,6 +28,13 @@ impl Display for BitmapParseError {
             Self::UnexpectedEOF => {
                 write!(f, "Unexpected end of file.",)
             }
+            Self::UnsupportedHeader(size) => write!(f, "Unsupported DIB header size: {size}."),
+            Self::UnsupportedCompression(value) => {
+                write!(f, "Unsupported bitmap compression: {value}.")
+            }
+            Self::UnsupportedBitDepth(depth) => write!(f, "Unsupported bitmap bit depth: {depth}."),
+            Self::InvalidHeader(message) => write!(f, "Invalid bitmap header: {message}."),
+            Self::InvalidPixelData => write!(f, "Invalid bitmap pixel data."),
         }
     }
 }
