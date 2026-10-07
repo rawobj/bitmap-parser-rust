@@ -43,18 +43,81 @@ impl<'a> BufferReader<'a> {
         Ok(bytes)
     }
 
+    pub fn read_array<const N: usize>(&mut self) -> Result<[u8; N], BufferError> {
+        let bytes = self.read_bytes(N)?;
+        Ok(bytes.try_into().unwrap())
+    }
+
     pub fn read_u16_le(&mut self) -> Result<u16, BufferError> {
-        let bytes = self.read_bytes(2)?;
-        Ok(u16::from_le_bytes(bytes.try_into().unwrap()))
+        Ok(u16::from_le_bytes(self.read_array()?))
     }
 
     pub fn read_u32_le(&mut self) -> Result<u32, BufferError> {
-        let bytes = self.read_bytes(4)?;
-        Ok(u32::from_le_bytes(bytes.try_into().unwrap()))
+        Ok(u32::from_le_bytes(self.read_array()?))
     }
 
     pub fn read_i32_le(&mut self) -> Result<i32, BufferError> {
-        let bytes = self.read_bytes(4)?;
-        Ok(i32::from_le_bytes(bytes.try_into().unwrap()))
+        Ok(i32::from_le_bytes(self.read_array()?))
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_read_bytes() {
+        let data = [1, 2, 3, 4, 5];
+        let mut reader = BufferReader::new(&data);
+
+        assert_eq!(reader.read_bytes(3).unwrap(), &[1, 2, 3]);
+        assert_eq!(reader.read_bytes(2).unwrap(), &[4, 5]);
+        assert!(reader.read_bytes(1).is_err());
+    }
+
+    #[test]
+    fn test_read_array() {
+        let data = [1, 2, 3, 4, 5];
+        let mut reader = BufferReader::new(&data);
+
+        assert_eq!(reader.read_array::<3>().unwrap(), [1, 2, 3]);
+        assert_eq!(reader.read_array::<2>().unwrap(), [4, 5]);
+        assert!(reader.read_array::<1>().is_err());
+    }
+
+    #[test]
+    fn test_seek() {
+        let data = [1, 2, 3, 4, 5];
+        let mut reader = BufferReader::new(&data);
+
+        reader.seek(2).unwrap();
+        assert_eq!(reader.read_bytes(2).unwrap(), &[3, 4]);
+
+        assert!(reader.seek(6).is_err());
+    }
+
+    #[test]
+    fn test_read_u16_le() {
+        let data = [0x34, 0x12];
+        let mut reader = BufferReader::new(&data);
+
+        assert_eq!(reader.read_u16_le().unwrap(), 0x1234);
+    }
+
+    #[test]
+    fn test_read_u32_le() {
+        let data = [0x78, 0x56, 0x34, 0x12];
+        let mut reader = BufferReader::new(&data);
+
+        assert_eq!(reader.read_u32_le().unwrap(), 0x12345678);
+    }
+
+    #[test]
+    fn test_read_i32_le() {
+        let data = [0xFF, 0xFF, 0xFF, 0xFF];
+        let mut reader = BufferReader::new(&data);
+
+        assert_eq!(reader.read_i32_le().unwrap(), -1);
     }
 }
