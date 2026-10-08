@@ -61,7 +61,6 @@ impl<'a> BufferReader<'a> {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
