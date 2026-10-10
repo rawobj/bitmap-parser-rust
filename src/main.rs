@@ -1,7 +1,6 @@
+use bitmap_parser::BitmapFile;
 use minifb::{Key, Window, WindowOptions};
 use std::{env, error::Error, process};
-
-use bitmap_parser::{BitmapFile, RGBA};
 
 fn main() {
     let mut args = env::args();
@@ -22,20 +21,18 @@ fn main() {
 
 fn run(filename: String) -> Result<(), Box<dyn Error>> {
     let bitmap = BitmapFile::open(&filename)?;
+    let decoded_image = bitmap.into_image_info()?.get_decoded_image()?;
 
-    dbg!(&bitmap.info_header);
     preview_image(
-        bitmap.info_header.width as usize,
-        bitmap.info_header.height.unsigned_abs() as usize,
-        bitmap.pixels,
+        decoded_image.width as usize,
+        decoded_image.height as usize,
+        decoded_image.pixels,
     );
 
     Ok(())
 }
 
-fn preview_image(width: usize, height: usize, pixels: Vec<RGBA>) {
-    let buffer: Vec<u32> = pixels.iter().map(RGBA::to_u32_rgb).collect();
-
+fn preview_image(width: usize, height: usize, pixels: Vec<u32>) {
     // Create the window
     let mut window = Window::new(
         "Bitmap Parser Preview",
@@ -45,7 +42,7 @@ fn preview_image(width: usize, height: usize, pixels: Vec<RGBA>) {
     )
     .unwrap();
 
-    window.update_with_buffer(&buffer, width, height).unwrap();
+    window.update_with_buffer(&pixels, width, height).unwrap();
 
     // Keep the window open until the user presses Escape.
     while window.is_open() && !window.is_key_down(Key::Escape) {

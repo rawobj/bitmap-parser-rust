@@ -1,6 +1,5 @@
-mod bitmap;
 mod error;
-mod parser;
+mod file;
+mod reader;
 
-pub use bitmap::{BitmapFile, BitmapHeader, BitmapInfoHeader, RGBA};
-pub use error::BitmapParseError;
+pub use file::{BitmapFile};
