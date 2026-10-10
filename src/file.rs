@@ -40,7 +40,7 @@ impl TryFrom<u32> for HeaderType {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Compression {
     Rgb,            // 0 BI_RGB
     Rle8,           // 1
@@ -236,8 +236,8 @@ impl BitmapInfoHeader {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
-enum ImageType {
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum ImageType {
     Palette,                  // has palette
     RGB16,                    // has channel masks
     RGB24,                    // no palette, no channel masks
@@ -281,8 +281,7 @@ impl ImageType {
 pub struct BitmapFile {
     file_header: FileHeader,
     headers: BitmapInfoHeader,
-    external_masks: Option<[u32; 4]>, // only for info type (40-byte) headers with bitfields compression
-    header_end: usize,                // where the header bytes end and a palette/pixeldata would start
+    header_end: usize, // where the header bytes end and a palette/pixeldata would start
     data: Vec<u8>,
 }
 
@@ -292,7 +291,6 @@ impl fmt::Debug for BitmapFile {
         f.debug_struct("BitmapFile")
             .field("file_header", &self.file_header)
             .field("headers", &self.headers)
-            .field("external_masks", &self.external_masks)
             .field("header_end", &self.header_end)
             .field("data_len", &self.data.len())
             .finish()
@@ -339,25 +337,6 @@ impl BitmapFile {
             return Err(BitmapDecoderError::InvalidHeader("Planes must be one"));
         }
 
-        // check for external channel masks that might come after the 40-byte header with bitfields compression
-        let mut external_masks = None;
-        if let BitmapInfoHeader::Info(_, info) = &info_header {
-            if matches!(
-                info.compression,
-                Compression::Bitfields | Compression::AlphaBitfields
-            ) {
-                let red = r.read_u32_le()?;
-                let green = r.read_u32_le()?;
-                let blue = r.read_u32_le()?;
-                let alpha = if info.compression == Compression::AlphaBitfields {
-                    r.read_u32_le()?
-                } else {
-                    0
-                };
-                external_masks = Some([red, green, blue, alpha]);
-            }
-        }
-
         let header_end = r.position();
 
         // pixel data must start after the headers and inside the file
@@ -367,61 +346,41 @@ impl BitmapFile {
                 "Invalid pixel data offset",
             ));
         }
+        println!("Header end: {header_end}, Pixel data offset: {offset}");
 
         Ok(BitmapFile {
             file_header,
             headers: info_header,
-            external_masks,
             header_end,
             data,
         })
     }
 
-    fn get_image_info(&self) -> Result<ImageInfo, BitmapDecoderError> {
+    fn into_image_info(self) -> Result<ImageInfo, BitmapDecoderError> {
         let (core, info, ..) = self.headers.values();
 
         // image type from compresion bitdepth and header type
         let image_type = ImageType::from_info_headers(core, info)?;
 
-        // getting the image size for calculation / verification purposes later maybe
-        let mut image_size = 0;
-        if let Some(info) = info {
-            image_size = info.image_size
-        }
+        let width = core.width as u32;
+        let height = core.height.unsigned_abs();
+        let bit_depth = core.bit_depth;
 
-        let has_alpha = false; // TODO check alpha if no v4/v5
-
-        let color_mask = None; // TODO color masks
-
-        let color_palette = None;
-        if matches!(
-            image_type,
-            ImageType::Palette | ImageType::RLE8Compressed | ImageType::RLE4Compressed
-        ) {
-            // TODO read palette
-        }
-
-        // Choosing to ignore ICC profile for now
-        // Gonna ignore the ICC profile handling if needed.
-        let icc_profile = None;
+        // where the pixel data lives inside the file buffer
+        let pixel_offset = self.file_header.offset;
 
         // generate the image info from the captured headers
         Ok(ImageInfo {
-            width: core.width as u32,
-            height: core.height as u32,
+            width,
+            height,
             top_down: core.height < 0,
-            bit_depth: core.bit_depth,
+            bit_depth,
             image_type,
-            image_size,
-            has_alpha,
-            color_mask,
-            color_palette,
-            icc_profile,
+            pixel_offset,
         })
     }
 }
 
-// #############################################
 
 #[derive(Debug)]
 pub struct ImageInfo {
@@ -430,28 +389,9 @@ pub struct ImageInfo {
     top_down: bool,
     bit_depth: u16,
     image_type: ImageType,
-    image_size: u32, // for calulation verification
+    pixel_offset: u32, // where the pixel data starts in the file buffer
 
-    has_alpha: bool,
-    color_mask: Option<Color>,
-    color_palette: Option<Color>,
-
-    icc_profile: Option<ICCProfile>,
-}
-
-#[derive(Debug)]
-struct Color {
-    red: u32,
-    green: u32,
-    blue: u32,
-    alpha: u32,
-}
-
-#[derive(Debug)]
-struct ICCProfile {
-    color_space: u32,                // TODO: make a color space enum
-    endpoints: [(u32, u32, u32); 3], // TODO: create an endpoints struct
-    gamma_red: u32,
-    gamma_green: u32,
-    gamma_blue: u32,
+    // color_mask: None,
+    // color_palette: None,
+    // icc_profile: None
 }
