@@ -38,7 +38,7 @@ impl TryFrom<u32> for HeaderType {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Compression {
     Rgb,            // 0 BI_RGB
     Rle8,           // 1
@@ -280,7 +280,8 @@ impl ImageType {
 pub struct BitmapFile {
     file_header: FileHeader,
     headers: BitmapInfoHeader,
-    additional_header_size: u32,
+    external_masks: Option<[u32; 4]>, // only for info type (40-byte) headers with bitfields compression
+    header_end: usize,                // where the header bytes end and a palette/pixeldata would start
     data: Vec<u8>,
 }
 
@@ -325,17 +326,41 @@ impl BitmapFile {
             return Err(BitmapDecoderError::InvalidHeader("Planes must be one"));
         }
 
-        let additional_header_size = file_header.offset - r.position() as u32;
-        if additional_header_size > 0 {
-            // it means there's some additional stuffs before image data starts
-            // will check that later
+        // check for external channel masks that might come after the 40-byte header with bitfields compression
+        let mut external_masks = None;
+        if let BitmapInfoHeader::Info(_, info) = &info_header {
+            if matches!(
+                info.compression,
+                Compression::Bitfields | Compression::AlphaBitfields
+            ) {
+                let red = r.read_u32_le()?;
+                let green = r.read_u32_le()?;
+                let blue = r.read_u32_le()?;
+                let alpha = if info.compression == Compression::AlphaBitfields {
+                    r.read_u32_le()?
+                } else {
+                    0
+                };
+                external_masks = Some([red, green, blue, alpha]);
+            }
+        }
+
+        let header_end = r.position();
+
+        // pixel data must start after the headers and inside the file
+        let offset = file_header.offset as usize;
+        if offset < header_end || offset > data.len() {
+            return Err(BitmapDecoderError::InvalidHeader(
+                "Invalid pixel data offset",
+            ));
         }
 
         Ok(BitmapFile {
             file_header,
             headers: info_header,
-            additional_header_size,
-            data: vec![],
+            external_masks,
+            header_end,
+            data,
         })
     }
 
