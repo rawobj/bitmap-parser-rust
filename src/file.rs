@@ -1,3 +1,5 @@
+use std::{fmt, path::Path};
+
 use crate::{
     error::BitmapDecoderError,
     reader::{BufferError, BufferReader},
@@ -276,7 +278,6 @@ impl ImageType {
     }
 }
 
-#[derive(Debug)]
 pub struct BitmapFile {
     file_header: FileHeader,
     headers: BitmapInfoHeader,
@@ -285,8 +286,21 @@ pub struct BitmapFile {
     data: Vec<u8>,
 }
 
+// custom debug implementation to avoid printing the entire pixel data
+impl fmt::Debug for BitmapFile {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("BitmapFile")
+            .field("file_header", &self.file_header)
+            .field("headers", &self.headers)
+            .field("external_masks", &self.external_masks)
+            .field("header_end", &self.header_end)
+            .field("data_len", &self.data.len())
+            .finish()
+    }
+}
+
 impl BitmapFile {
-    pub fn open(path: &str) -> Result<BitmapFile, BitmapDecoderError> {
+    pub fn open(path: impl AsRef<Path>) -> Result<BitmapFile, BitmapDecoderError> {
         let data = std::fs::read(path)?;
 
         // first two bytes of the data shall be the bitmap signature "BM"
@@ -311,11 +325,10 @@ impl BitmapFile {
 
         // header validation
         let (core, ..) = info_header.values();
-        if core.width <= 0
+        if core.width < 1
             || core.width > MAX_WIDTH_HEIGHT
-            || core.height <= 0
-            || core.height > MAX_WIDTH_HEIGHT
-            || core.height == i32::MIN
+            || core.height == 0
+            || core.height.unsigned_abs() > MAX_WIDTH_HEIGHT as u32
         {
             return Err(BitmapDecoderError::InvalidHeader(
                 "Invalid image dimensions",
