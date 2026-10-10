@@ -25,6 +25,10 @@ impl<'a> BufferReader<'a> {
         Self { data, cursor: 0 }
     }
 
+    pub fn position(&self) -> usize {
+        return self.cursor;
+    }
+
     pub fn seek(&mut self, target_position: usize) -> Result<(), BufferError> {
         if target_position > self.data.len() {
             return Err(BufferError::UnexpectedEOF);

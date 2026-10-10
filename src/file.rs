@@ -1,4 +1,7 @@
-use std::{fmt, path::Path};
+use std::{
+    fmt::{self, Display},
+    path::Path,
+};
 
 use crate::{
     error::BitmapDecoderError,
@@ -248,6 +251,22 @@ pub enum ImageType {
     AlphaBitfieldsCompressed, // has channel masks
 }
 
+impl Display for ImageType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let name = match self {
+            Self::Palette => "Paletted Image",
+            Self::RGB16 => "RGB16 type Image",
+            Self::RGB24 => "RGB24 type Image",
+            Self::RGB32 => "RGB32 type Image with channel masks",
+            Self::RLE8Compressed => "RLE8 Compressed Image",
+            Self::RLE4Compressed => "RLE4 Compressed Image",
+            Self::BitfieldsCompressed => "Bitfields Compressed Image",
+            Self::AlphaBitfieldsCompressed => "AlphaBitfields Compressed Image",
+        };
+        write!(f, "{name}")
+    }
+}
+
 impl ImageType {
     fn from_info_headers(
         core: &CoreHeader,
@@ -356,7 +375,7 @@ impl BitmapFile {
         })
     }
 
-    fn into_image_info(self) -> Result<ImageInfo, BitmapDecoderError> {
+    pub fn into_image_info(self) -> Result<ImageInfo, BitmapDecoderError> {
         let (core, info, ..) = self.headers.values();
 
         // image type from compresion bitdepth and header type
@@ -381,7 +400,6 @@ impl BitmapFile {
     }
 }
 
-
 #[derive(Debug)]
 pub struct ImageInfo {
     width: u32,
@@ -391,7 +409,7 @@ pub struct ImageInfo {
     image_type: ImageType,
     pixel_offset: u32, // where the pixel data starts in the file buffer
 
-    // color_mask: None,
-    // color_palette: None,
-    // icc_profile: None
+                       // color_mask: None,
+                       // color_palette: None,
+                       // icc_profile: None
 }
