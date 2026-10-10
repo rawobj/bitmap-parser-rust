@@ -300,7 +300,8 @@ impl ImageType {
 pub struct BitmapFile {
     file_header: FileHeader,
     headers: BitmapInfoHeader,
-    header_end: usize, // where the header bytes end and a palette/pixeldata would start
+    additional_headers: bool, // indicates if there are additional headers after the main info header
+    read_offset: usize,       // current read offset in the data buffer
     data: Vec<u8>,
 }
 
@@ -310,7 +311,8 @@ impl fmt::Debug for BitmapFile {
         f.debug_struct("BitmapFile")
             .field("file_header", &self.file_header)
             .field("headers", &self.headers)
-            .field("header_end", &self.header_end)
+            .field("additional_headers", &self.additional_headers)
+            .field("read_offset", &self.read_offset)
             .field("data_len", &self.data.len())
             .finish()
     }
@@ -356,21 +358,21 @@ impl BitmapFile {
             return Err(BitmapDecoderError::InvalidHeader("Planes must be one"));
         }
 
-        let header_end = r.position();
+        let current_pos = r.position();
 
         // pixel data must start after the headers and inside the file
-        let offset = file_header.offset as usize;
-        if offset < header_end || offset > data.len() {
+        let image_offset = file_header.offset as usize;
+        if image_offset < current_pos || image_offset > data.len() {
             return Err(BitmapDecoderError::InvalidHeader(
                 "Invalid pixel data offset",
             ));
         }
-        println!("Header end: {header_end}, Pixel data offset: {offset}");
 
         Ok(BitmapFile {
             file_header,
             headers: info_header,
-            header_end,
+            additional_headers: image_offset > current_pos,
+            read_offset: current_pos,
             data,
         })
     }
@@ -396,6 +398,7 @@ impl BitmapFile {
             bit_depth,
             image_type,
             pixel_offset,
+            data: self.data, // keep the data buffer for pixel access
         })
     }
 }
@@ -409,7 +412,112 @@ pub struct ImageInfo {
     image_type: ImageType,
     pixel_offset: u32, // where the pixel data starts in the file buffer
 
-                       // color_mask: None,
-                       // color_palette: None,
-                       // icc_profile: None
+    // color_mask: None,
+    // color_palette: None,
+    // icc_profile: None
+    data: Vec<u8>, // the entire file data buffer, including headers and pixel data
+}
+
+impl ImageInfo {
+    pub fn get_decoded_image(&self) -> Result<DecodedImage, BitmapDecoderError> {
+        match self.image_type {
+            ImageType::Palette => {
+                // read the palette and decode indexed pixel values
+                Err(BitmapDecoderError::NotImplemented(ImageType::Palette))
+            }
+            ImageType::RGB16 => {
+                // read 16-bit pixels and convert their channel layout
+                Err(BitmapDecoderError::NotImplemented(ImageType::RGB16))
+            }
+            ImageType::RGB24 => {
+                // decode BGR rows, padding and image orientation
+                decode_rgb24(self)
+            }
+            ImageType::RGB32 => {
+                // read 32-bit pixels and apply the declared alpha rules
+                Err(BitmapDecoderError::NotImplemented(ImageType::RGB32))
+            }
+            ImageType::RLE8Compressed => {
+                // dcode RLE8 commands, escapes, runs and absolute blocks
+                Err(BitmapDecoderError::NotImplemented(
+                    ImageType::RLE8Compressed,
+                ))
+            }
+            ImageType::RLE4Compressed => Err(BitmapDecoderError::NotImplemented(
+                ImageType::RLE4Compressed,
+            )),
+            ImageType::BitfieldsCompressed => {
+                // Read channel masks and extract each channel from pixels.
+                Err(BitmapDecoderError::NotImplemented(
+                    ImageType::BitfieldsCompressed,
+                ))
+            }
+            ImageType::AlphaBitfieldsCompressed => {
+                // Read alpha masks and preserve the declared alpha channel.
+                Err(BitmapDecoderError::NotImplemented(
+                    ImageType::AlphaBitfieldsCompressed,
+                ))
+            }
+        }
+    }
+}
+
+pub struct DecodedImage {
+    pub width: u32,
+    pub height: u32,
+    pub pixels: Vec<u32>,
+}
+
+fn decode_rgb24(image_info: &ImageInfo) -> Result<DecodedImage, BitmapDecoderError> {
+    let pixel_data = image_info
+        .data
+        .get(image_info.pixel_offset as usize..)
+        .ok_or(BitmapDecoderError::InvalidPixelData)?;
+
+    let width = image_info.width;
+    let height = image_info.height;
+
+    let pixel_bytes = width * 3; // 3 bytes per pixel for RGB24
+    let row_size = (pixel_bytes + 3) & !3; // padded to 4 bytes
+
+    let mut pixels = Vec::with_capacity((width * height) as usize);
+
+    for row in 0..height {
+        let row_index = if image_info.top_down {
+            row
+        } else {
+            height - 1 - row
+        };
+        let start = (row_index * row_size) as usize;
+        let end = start + (width * 3) as usize;
+
+        let row_data = pixel_data
+            .get(start..end)
+            .ok_or(BitmapDecoderError::InvalidPixelData)?;
+
+        for chunk in row_data.chunks_exact(3) {
+            let b = chunk[0];
+            let g = chunk[1];
+            let r = chunk[2];
+            pixels.push(pack_rgb24(r, g, b));
+        }
+    }
+
+    Ok(DecodedImage {
+        width,
+        height,
+        pixels,
+    })
+}
+
+fn pack_rgb24(red: u8, green: u8, blue: u8) -> u32 {
+    ((red as u32) << 16) | ((green as u32) << 8) | blue as u32
+}
+
+#[cfg(test)]
+mod decoder_tests {
+    #[test]
+    fn packs_rgb24_pixels_for_minifb() {
+        assert_eq!(super::pack_rgb24(0xE1, 0xB2, 0x83), 0xE1B283);
+    }
 }
