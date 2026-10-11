@@ -403,19 +403,33 @@ impl BitmapFile {
     }
 }
 
-#[derive(Debug)]
 pub struct ImageInfo {
-    width: u32,
-    height: u32, // taking always positive with top_down for orientation
-    top_down: bool,
-    bit_depth: u16,
-    image_type: ImageType,
-    pixel_offset: u32, // where the pixel data starts in the file buffer
+    pub width: u32,
+    pub height: u32, // taking always positive with top_down for orientation
+    pub top_down: bool,
+    pub bit_depth: u16,
+    pub image_type: ImageType,
+    pub pixel_offset: u32, // where the pixel data starts in the file buffer
 
     // color_mask: None,
     // color_palette: None,
     // icc_profile: None
-    data: Vec<u8>, // the entire file data buffer, including headers and pixel data
+    pub data: Vec<u8>, // the entire file data buffer, including headers and pixel data
+}
+
+// custom debug implementation, a derived one would print the whole file buffer
+impl fmt::Debug for ImageInfo {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ImageInfo")
+            .field("width", &self.width)
+            .field("height", &self.height)
+            .field("top_down", &self.top_down)
+            .field("bit_depth", &self.bit_depth)
+            .field("image_type", &self.image_type)
+            .field("pixel_offset", &self.pixel_offset)
+            .field("data_len", &self.data.len())
+            .finish()
+    }
 }
 
 impl ImageInfo {
@@ -489,8 +503,7 @@ fn decode_rgb24(image_info: &ImageInfo) -> Result<DecodedImage, BitmapDecoderErr
             height - 1 - row
         };
         let start = (row_index * row_size) as usize;
-        let end = start + (width * 3) as usize;
-
+        let end = start + pixel_bytes as usize;
         let row_data = pixel_data
             .get(start..end)
             .ok_or(BitmapDecoderError::InvalidPixelData)?;
