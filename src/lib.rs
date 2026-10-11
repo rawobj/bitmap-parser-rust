@@ -2,4 +2,4 @@ mod error;
 mod file;
 mod reader;
 
-pub use file::{BitmapFile};
+pub use file::{BitmapFile, DecodedImage, ImageInfo};
