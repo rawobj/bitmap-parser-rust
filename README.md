@@ -144,3 +144,5 @@ orientation.
 - https://en.wikipedia.org/wiki/BMP_file_format
 
 - https://gibberlings3.github.io/iesdp/file_formats/ie_formats/bmp.htm
+
+- https://arcm.csc.ncsu.edu/~mueller/cluster/ps3/SDK3.0/docs/accessibility/sdkpt/cbet_1simdvector.html
