@@ -29,14 +29,6 @@ impl<'a> BufferReader<'a> {
         return self.cursor;
     }
 
-    pub fn seek(&mut self, target_position: usize) -> Result<(), BufferError> {
-        if target_position > self.data.len() {
-            return Err(BufferError::UnexpectedEOF);
-        }
-        self.cursor = target_position;
-        Ok(())
-    }
-
     pub fn read_bytes(&mut self, count: usize) -> Result<&[u8], BufferError> {
         let end = self.cursor + count;
         if end > self.data.len() {
@@ -87,17 +79,6 @@ mod tests {
         assert_eq!(reader.read_array::<3>().unwrap(), [1, 2, 3]);
         assert_eq!(reader.read_array::<2>().unwrap(), [4, 5]);
         assert!(reader.read_array::<1>().is_err());
-    }
-
-    #[test]
-    fn test_seek() {
-        let data = [1, 2, 3, 4, 5];
-        let mut reader = BufferReader::new(&data);
-
-        reader.seek(2).unwrap();
-        assert_eq!(reader.read_bytes(2).unwrap(), &[3, 4]);
-
-        assert!(reader.seek(6).is_err());
     }
 
     #[test]
