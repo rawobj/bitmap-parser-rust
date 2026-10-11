@@ -4,7 +4,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use bitmap_parser::{BitmapFile, simd};
+use bitmap_decoder::{BitmapFile, simd};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     if std::is_x86_feature_detected!("ssse3") {

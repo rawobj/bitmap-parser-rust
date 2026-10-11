@@ -1,4 +1,4 @@
-use bitmap_parser::BitmapFile;
+use bitmap_decoder::BitmapFile;
 use minifb::{Key, Window, WindowOptions};
 use std::{env, error::Error, process};
 
@@ -35,7 +35,7 @@ fn run(filename: String) -> Result<(), Box<dyn Error>> {
 fn preview_image(width: usize, height: usize, pixels: Vec<u32>) {
     // Create the window
     let mut window = Window::new(
-        "Bitmap Parser Preview",
+        "Bitmap Decoder Preview",
         width,
         height,
         WindowOptions::default(),

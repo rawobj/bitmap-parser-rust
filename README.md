@@ -1,13 +1,13 @@
-# Bitmap Parser
+# Bitmap Decoder
 
 Bitmap decoder and command-line viewer implemented in Rust for reading Bitmap (BMP) images. It parses several BMP/DIB header variants, currently decodes uncompressed 24-bit BGR pixel data, and displays the preview.
 
 ## Why?
 For learning purposes. 
 
-**No any thirdparty library is used for any image parsing work, everything is fully self-coded for the sake of understanding every aspect of image parsing.**
+**No any thirdparty library is used for any image parsing or decoding work, everything is fully self-coded for the sake of understanding every aspect of image parsing.**
 
-The parser uses Rust's standard library for file I/O and decoding.
+The decoder uses Rust's standard library for file I/O and decoding.
 Cargo package `minifb` is used only by the viewer binary to paint the pixels for preview.
 
 ## Current support
@@ -38,7 +38,7 @@ The parser can identify several unsupported image types, but only RGB24 pixel da
 ## Running the viewer
 
 ```text
-cargo run --release --bin bitmap-parser -- sample/24bituncompressed.bmp
+cargo run --release --bin bitmap-decoder -- sample/24bituncompressed.bmp
 ```
 
 ## Decoder benchmark
