@@ -13,6 +13,7 @@ const MAX_WIDTH_HEIGHT: i32 = 0xFFFF;
 
 // Bitmap File Header
 #[derive(Debug)]
+#[allow(dead_code)]
 struct FileHeader {
     signature: [u8; 2], // 2 bytes, Offset `0000h`, 'BM'
     filesize: u32,      // 4 bytes, file size in bytes
@@ -68,6 +69,7 @@ impl From<u32> for Compression {
 
 // Complete Info Header
 #[derive(Debug)]
+#[allow(dead_code)]
 struct CoreHeader {
     // https://learn.microsoft.com/en-us/windows/win32/api/wingdi/ns-wingdi-bitmapcoreheader
     header_size: u32,
@@ -108,6 +110,7 @@ impl CoreHeader {
 }
 
 #[derive(Debug)]
+#[allow(dead_code)]
 struct InfoHeader {
     // https://learn.microsoft.com/en-us/windows/win32/api/wingdi/ns-wingdi-bitmapinfoheader
     compression: Compression,
@@ -132,6 +135,7 @@ impl InfoHeader {
 }
 
 #[derive(Debug)]
+#[allow(dead_code)]
 struct V4Header {
     // https://learn.microsoft.com/en-us/windows/win32/api/wingdi/ns-wingdi-bitmapv4header
     red_mask: u32,
@@ -167,6 +171,7 @@ impl V4Header {
 }
 
 #[derive(Debug)]
+#[allow(dead_code)]
 struct V5Header {
     // https://learn.microsoft.com/en-us/windows/win32/api/wingdi/ns-wingdi-bitmapv5header
     intent: u32,
@@ -188,6 +193,7 @@ impl V5Header {
 
 // Info Header Variants as per the header type
 #[derive(Debug)]
+#[allow(private_interfaces)]
 pub enum BitmapInfoHeader {
     Core(CoreHeader),
     Info(CoreHeader, InfoHeader),
@@ -196,6 +202,7 @@ pub enum BitmapInfoHeader {
 }
 
 impl BitmapInfoHeader {
+    #[allow(private_interfaces)]
     pub fn read(r: &mut BufferReader, header_size: u32) -> Result<Self, BitmapDecoderError> {
         let header_type = HeaderType::try_from(header_size)?;
         let core_header = CoreHeader::read(r, header_size, header_type == HeaderType::Core)?;
@@ -213,6 +220,7 @@ impl BitmapInfoHeader {
         })
     }
 
+    #[allow(dead_code)]
     fn get_type(&self) -> HeaderType {
         match self {
             Self::Core(..) => HeaderType::Core,
@@ -222,6 +230,7 @@ impl BitmapInfoHeader {
         }
     }
 
+    #[allow(private_interfaces)]
     pub fn values(
         &self,
     ) -> (
